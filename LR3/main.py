@@ -58,6 +58,9 @@ class User(BaseModel):
     hashed_password: str
     age: Optional[int] = None
 
+    class Config:
+        orm_mode = True  # Включаем поддержку преобразования ORM объектов в Pydantic модели
+
 class Package(BaseModel):
     id: Optional[int] = None
     user_id: int
@@ -140,3 +143,13 @@ async def read_packages(db: SessionLocal = Depends(get_db), token: str = Depends
 async def read_packages(db: SessionLocal = Depends(get_db), token: str = Depends(oauth2_scheme)):
     return db.query(PackageDB).all()
 
+@app.get("/users/{username}", response_model=User)
+async def get_user_by_username(username: str, db: SessionLocal = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    db_user = db.query(UserDB).filter(UserDB.username == username).first()
+    if db_user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    # Отладочное сообщение
+    print(db_user)  # Посмотрите, что приходит из базы данных
+    
+    return db_user
