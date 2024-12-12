@@ -19,6 +19,7 @@ RUN chmod +x wait-for-postgres.sh
 
 # Копируем основной код приложения
 COPY main.py .
+COPY kafka_cons.py .
 
 # Устанавливаем команду по умолчанию
 CMD ["./wait-for-postgres.sh", "./mongo-init.sh","python", "main.py"]

@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from typing import Optional
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from confluent_kafka import Producer
-from confluent_kafka.admin import AdminClient
 import redis
 import datetime
 import time
@@ -57,7 +56,7 @@ class UserDB(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
+    hashed_password = Column(String, nullable=True)
     age = Column(Integer, nullable=True)
 
     packages = relationship("PackageDB", back_populates="user")
@@ -162,20 +161,18 @@ def set_user_in_cache(username: str, user: dict, expire: int = 3600):
 async def register_user(user: UserCreate, db: SessionLocal = Depends(get_db)):
     hashed_password = get_password_hash(user.hashed_password)
     db_user = UserDB(username=user.username, email=user.email, hashed_password=hashed_password, age=user.age)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    # db.add(db_user)
+    # db.commit()
+    # db.refresh(db_user)
 
     user_data = UserCreate.from_orm(db_user)
     set_user_in_cache(user.username, user_data.dict())
 
-    kafka_message = {
-        "username": user_data.username,
-        "timestamp": str(datetime.datetime.now().isoformat())
-    }
+    kafka_message = user_data.dict()
+    print(kafka_message)
 
     producer.produce(
-            "created user",  # Укажите ваш топик
+            "created_user",  # Укажите ваш топик
             key=kafka_message["username"].encode("utf-8"),
             value=json.dumps(kafka_message).encode("utf-8")
         )
